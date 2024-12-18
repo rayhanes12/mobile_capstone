@@ -3,7 +3,7 @@ import 'package:projek_capstone7/page/mainpage/cart.dart';
 import 'package:projek_capstone7/page/mainpage/chatbot.dart';
 import 'package:projek_capstone7/page/mainpage/home.dart';
 import 'package:flutter/material.dart';
-import 'package:projek_capstone7/page/mainpage/profil.dart';
+import 'package:projek_capstone7/page/mainpage/setting.dart';
 
 class Mainpage extends StatefulWidget {
   const Mainpage({super.key});
@@ -24,7 +24,7 @@ class _MainpageState extends State<Mainpage> {
       } else if (_currentIndex == 2) {
         return ChatPage();
       } else if (_currentIndex == 3){
-        return ProfilePage();
+        return SettingsPage();
       }
     }
 
@@ -44,15 +44,15 @@ class _MainpageState extends State<Mainpage> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart),
-            label: 'Cart',
+            label: 'Transaction',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat),
             label: 'Chat',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle_outlined),
-            label: 'Profile',
+            icon: Icon(Icons.settings),
+            label: 'Setting',
           ),
         ],
         selectedItemColor: Color(0xFF69BF5E),

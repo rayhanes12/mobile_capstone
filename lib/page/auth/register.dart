@@ -1,127 +1,139 @@
-// import 'package:flutter/material.dart';
-
-// class RegisterScreen extends StatelessWidget {
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       body: Container(
-//         decoration: BoxDecoration(
-//           gradient: LinearGradient(
-//             colors: [Color(0xFF69BF5E), Color(0xFFA2E555)],
-//             begin: Alignment.topCenter,
-//             end: Alignment.bottomCenter,
-//           ),
-//         ),
-//         child: Center(
-//           child: Padding(
-//             padding: const EdgeInsets.symmetric(horizontal: 30.0),
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.center,
-//               children: [
-//                 Text(
-//                   "Create Account",
-//                   style: TextStyle(
-//                     color: Colors.white,
-//                     fontSize: 28,
-//                     fontWeight: FontWeight.bold,
-//                   ),
-//                 ),
-//                 SizedBox(height: 40),
-//                 _buildRoundedTextField("Name", Icons.person, false),
-//                 SizedBox(height: 20),
-//                 _buildRoundedTextField("Email", Icons.email, false),
-//                 SizedBox(height: 20),
-//                 _buildRoundedTextField("Password", Icons.lock, true),
-//                 SizedBox(height: 30),
-//                 _buildRegisterButton(),
-//                 SizedBox(height: 30),
-//                 TextButton(
-//                   onPressed: () {
-//                     Navigator.pop(context);
-//                   },
-//                   child: Text(
-//                     "Already have an account? Login",
-//                     style: TextStyle(color: Colors.white, fontSize: 16),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _buildRoundedTextField(
-//       String hintText, IconData icon, bool obscureText) {
-//     return TextField(
-//       obscureText: obscureText,
-//       decoration: InputDecoration(
-//         hintText: hintText,
-//         hintStyle: TextStyle(color: const Color.fromARGB(255, 56, 56, 56)),
-//         filled: true,
-//         fillColor: Colors.white.withOpacity(0.9),
-//         contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-//         border: OutlineInputBorder(
-//           borderRadius: BorderRadius.circular(30.0),
-//           borderSide: BorderSide.none,
-//         ),
-//         prefixIcon: Icon(icon, color: const Color.fromARGB(255, 56, 56, 56)),
-//       ),
-//       style: TextStyle(color: const Color.fromARGB(255, 56, 56, 56)),
-//     );
-//   }
-
-//   Widget _buildRegisterButton() {
-//     return ElevatedButton(
-//       onPressed: () {
-//         // Tambahkan fungsi registrasi di sini
-//       },
-//       style: ElevatedButton.styleFrom(
-//         padding: EdgeInsets.symmetric(horizontal: 80, vertical: 15),
-//         shape: RoundedRectangleBorder(
-//           borderRadius: BorderRadius.circular(30),
-//         ),
-//       ),
-//       child: Text(
-//         "Register",
-//         style: TextStyle(color: Color(0xFF69BF5E), fontSize: 18),
-//       ),
-//     );
-//   }
-// }
-
-
-
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:projek_capstone7/page/auth/login.dart';
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
+  @override
+  _RegisterScreenState createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  bool _isValidEmail(String email) {
+    final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+    return regex.hasMatch(email);
+  }
+
+  Future<void> _register(BuildContext context) async {
+  final name = _nameController.text.trim();
+  final email = _emailController.text.trim();
+  final password = _passwordController.text.trim();
+
+  // Validasi Input
+  if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    _showDialog(context, "Error", "Semua kolom harus diisi.");
+    return;
+  }
+
+  if (!_isValidEmail(email)) {
+    _showDialog(context, "Error", "Format email tidak valid.");
+    return;
+  }
+
+  if (password.length < 6) {
+    _showDialog(context, "Error", "Password minimal 6 karakter.");
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final response = await http.post(
+      Uri.parse('https://kulakan.cy4lsr.my.id/api/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'password': password,
+      }),
+    );
+
+    print("Status Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      // Jika respons berhasil
+      final res = jsonDecode(response.body);
+
+      if (res.containsKey('message')) {
+        _showDialog(context, "Sukses", res['message']).then((_) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => LoginScreen()),
+          );
+        });
+      } else {
+        _showDialog(context, "Sukses", "Pendaftaran berhasil.");
+      }
+    } else if (response.statusCode == 422) {
+      // Kesalahan validasi
+      final res = jsonDecode(response.body);
+      _showDialog(context, "Error", res['message'] ?? "Validasi gagal.");
+    } else {
+      // Kesalahan umum
+      _showDialog(context, "Error", "Terjadi kesalahan server.");
+    }
+  } catch (e) {
+    setState(() {
+      _isLoading = false;
+    });
+    print("Exception: $e");
+    _showDialog(context, "Error", "Gagal terhubung ke server. Coba lagi.");
+  }
+}
+
+
+  Future<void> _showDialog(BuildContext context, String title, String message) {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Bagian atas - Ilustrasi
+            // Header dengan ilustrasi
             Container(
               color: Color(0xFF69BF5E),
               width: double.infinity,
               padding: const EdgeInsets.all(40.0),
               child: Center(
                 child: Image.asset(
-                  'assets/illustration.png', // Gambar ilustrasi
-                  height: 200, // Sesuaikan ukuran gambar
-                  fit: BoxFit.contain,
+                  'assets/login_image.png',
+                  height: 200,
                 ),
               ),
             ),
-            // Bagian bawah - Form registrasi
+            // Form Input
             Padding(
               padding: const EdgeInsets.all(30.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Judul aplikasi
                   Text(
                     "Kulakan.",
                     style: TextStyle(
@@ -131,7 +143,6 @@ class RegisterScreen extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 10),
-                  // Sub-judul
                   Text(
                     "Buat Akun Pertamamu",
                     style: TextStyle(
@@ -141,41 +152,30 @@ class RegisterScreen extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 20),
-                  // Input Full Name
-                  _buildRoundedTextField("Full name", Icons.person, false),
-                  SizedBox(height: 20),
-                  // Input Email
-                  _buildRoundedTextField("Email", Icons.email, false),
-                  SizedBox(height: 20),
-                  // Input Password
-                  _buildRoundedTextField("Password", Icons.lock, true),
-                  SizedBox(height: 30),
-                  // Tombol Register
-                  _buildRegisterButton(),
-                  SizedBox(height: 20),
-                  // Teks Login
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Already have an account? ",
-                        style: TextStyle(color: Colors.black54, fontSize: 14),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context); // Navigasi ke halaman login
-                        },
-                        child: Text(
-                          "Login",
-                          style: TextStyle(
-                            color: Color(0xFF69BF5E),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                  _buildRoundedTextField(
+                    "Full name",
+                    Icons.person,
+                    false,
+                    _nameController,
                   ),
+                  SizedBox(height: 20),
+                  _buildRoundedTextField(
+                    "Email",
+                    Icons.email,
+                    false,
+                    _emailController,
+                  ),
+                  SizedBox(height: 20),
+                  _buildRoundedTextField(
+                    "Password",
+                    Icons.lock,
+                    true,
+                    _passwordController,
+                  ),
+                  SizedBox(height: 30),
+                  _buildRegisterButton(context),
+                  SizedBox(height: 20),
+                  _buildAlreadyHaveAccountText(context),
                 ],
               ),
             ),
@@ -185,44 +185,68 @@ class RegisterScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRoundedTextField(
-      String hintText, IconData icon, bool obscureText) {
+  Widget _buildRoundedTextField(String hintText, IconData icon,
+      bool obscureText, TextEditingController controller) {
     return TextField(
+      controller: controller,
       obscureText: obscureText,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.black54),
         filled: true,
         fillColor: Colors.grey[200],
-        contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        contentPadding:
+            EdgeInsets.symmetric(vertical: 15, horizontal: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.0),
           borderSide: BorderSide.none,
         ),
         prefixIcon: Icon(icon, color: Colors.black54),
       ),
-      style: TextStyle(color: Colors.black87),
     );
   }
 
-  Widget _buildRegisterButton() {
+  Widget _buildRegisterButton(BuildContext context) {
     return ElevatedButton(
-      onPressed: () {
-        // Tambahkan logika registrasi di sini
-      },
+      onPressed: _isLoading ? null : () => _register(context),
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.symmetric(vertical: 15),
         backgroundColor: Color(0xFF69BF5E),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(10.0),
         ),
+        padding: EdgeInsets.symmetric(vertical: 15.0),
       ),
       child: Center(
-        child: Text(
-          "Start",
-          style: TextStyle(color: Colors.white, fontSize: 16),
-        ),
+        child: _isLoading
+            ? CircularProgressIndicator(color: Colors.white)
+            : Text(
+                "Daftar",
+                style: TextStyle(color: Colors.white, fontSize: 16.0),
+              ),
       ),
+    );
+  }
+
+  Widget _buildAlreadyHaveAccountText(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Sudah punya akun? ",
+          style: TextStyle(color: Colors.black54),
+        ),
+        GestureDetector(
+          onTap: () {
+            Navigator.pop(context);
+          },
+          child: Text(
+            "Login",
+            style: TextStyle(
+              color: Color(0xFF69BF5E),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

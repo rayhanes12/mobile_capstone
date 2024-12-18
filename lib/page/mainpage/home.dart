@@ -15,7 +15,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Bagian atas: Background gradient dengan motto dan gambar cart
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(70.0),
@@ -44,9 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  // Gambar Cart
                   Image.asset(
-                    'assets/cart.png', // Ganti dengan gambar cart Anda
+                    'assets/cart.png', 
                     height: 100,
                   ),
                 ],
@@ -54,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             SizedBox(height: 10),
 
-            // Bagian Pencarian
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
