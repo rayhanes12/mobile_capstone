@@ -12,7 +12,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
 
   bool _isValidEmail(String email) {
     final regex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
@@ -20,79 +19,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register(BuildContext context) async {
-  final name = _nameController.text.trim();
-  final email = _emailController.text.trim();
-  final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-  // Validasi Input
-  if (name.isEmpty || email.isEmpty || password.isEmpty) {
-    _showDialog(context, "Error", "Semua kolom harus diisi.");
-    return;
-  }
+    // Validasi input
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      _showDialog(context, "Error", "Semua kolom harus diisi.");
+      return;
+    }
 
-  if (!_isValidEmail(email)) {
-    _showDialog(context, "Error", "Format email tidak valid.");
-    return;
-  }
+    if (!_isValidEmail(email)) {
+      _showDialog(context, "Error", "Format email tidak valid.");
+      return;
+    }
 
-  if (password.length < 6) {
-    _showDialog(context, "Error", "Password minimal 6 karakter.");
-    return;
-  }
+    if (password.length < 6) {
+      _showDialog(context, "Error", "Password minimal 6 karakter.");
+      return;
+    }
 
-  setState(() {
-    _isLoading = true;
-  });
+    try {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:5000/api/register'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+        }),
+      );
 
-  try {
-    final response = await http.post(
-      Uri.parse('https://kulakan.cy4lsr.my.id/api/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-      }),
-    );
+      print("Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
 
-    print("Status Code: ${response.statusCode}");
-    print("Response Body: ${response.body}");
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      // Jika respons berhasil
-      final res = jsonDecode(response.body);
-
-      if (res.containsKey('message')) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Pendaftaran berhasil
+        final res = jsonDecode(response.body);
         _showDialog(context, "Sukses", res['message']).then((_) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => LoginScreen()),
           );
         });
+      } else if (response.statusCode == 400 || response.statusCode == 422) {
+        // Kesalahan validasi
+        final res = jsonDecode(response.body);
+        _showDialog(context, "Error", res['message'] ?? "Validasi gagal.");
       } else {
-        _showDialog(context, "Sukses", "Pendaftaran berhasil.");
+        // Kesalahan umum
+        _showDialog(context, "Error", "Terjadi kesalahan server.");
       }
-    } else if (response.statusCode == 422) {
-      // Kesalahan validasi
-      final res = jsonDecode(response.body);
-      _showDialog(context, "Error", res['message'] ?? "Validasi gagal.");
-    } else {
-      // Kesalahan umum
-      _showDialog(context, "Error", "Terjadi kesalahan server.");
+    } catch (e) {
+      print("Exception: $e");
+      _showDialog(context, "Error", "Gagal terhubung ke server. Coba lagi.");
     }
-  } catch (e) {
-    setState(() {
-      _isLoading = false;
-    });
-    print("Exception: $e");
-    _showDialog(context, "Error", "Gagal terhubung ke server. Coba lagi.");
   }
-}
-
 
   Future<void> _showDialog(BuildContext context, String title, String message) {
     return showDialog(
@@ -207,7 +191,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildRegisterButton(BuildContext context) {
     return ElevatedButton(
-      onPressed: _isLoading ? null : () => _register(context),
+      onPressed: () => _register(context),
       style: ElevatedButton.styleFrom(
         backgroundColor: Color(0xFF69BF5E),
         shape: RoundedRectangleBorder(
@@ -216,12 +200,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         padding: EdgeInsets.symmetric(vertical: 15.0),
       ),
       child: Center(
-        child: _isLoading
-            ? CircularProgressIndicator(color: Colors.white)
-            : Text(
-                "Daftar",
-                style: TextStyle(color: Colors.white, fontSize: 16.0),
-              ),
+        child: Text(
+          "Daftar",
+          style: TextStyle(color: Colors.white, fontSize: 16.0),
+        ),
       ),
     );
   }

@@ -47,21 +47,17 @@ class _CartPageState extends State<CartPage> {
 
 int getTotalPrice() {
   return cartItems.fold(0, (total, item) {
-    // Konversi 'price' dari String ke int
     int price = item['price'];
 
-    // Konversi 'quantity' ke int jika diperlukan
     int quantity = item['quantity'] is int
         ? item['quantity']
         : int.tryParse(item['quantity'].toString()) ?? 0;
 
-    // Hitung total
     return total + (price * quantity);
   });
 }
 
 
-  // Fungsi untuk menghapus item
   void removeItem(int index) {
     setState(() {
       cartItems.removeAt(index);
@@ -95,7 +91,6 @@ int getTotalPrice() {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Placeholder untuk gambar produk
                           Container(
                             height: 50,
                             width: 50,
@@ -108,7 +103,6 @@ int getTotalPrice() {
                                 : Icon(Icons.image, color: Colors.grey),
                           ),
                           const SizedBox(width: 16),
-                          // Informasi produk
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +126,6 @@ int getTotalPrice() {
                               ],
                             ),
                           ),
-                          // Jumlah item
                           Column(
                             children: [
                               Text(
@@ -156,7 +149,6 @@ int getTotalPrice() {
               },
             ),
           ),
-          // Footer dengan total dan tombol checkout
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
             decoration: BoxDecoration(

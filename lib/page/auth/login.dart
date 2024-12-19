@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:projek_capstone7/service/api_service.dart';
-import 'package:projek_capstone7/page/auth/forgot_password.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:projek_capstone7/page/auth/register.dart';
 import 'package:projek_capstone7/page/mainpage/mainpage.dart';
 
@@ -12,12 +12,79 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
 
-  // Validator email
-  bool isValidEmail(String email) {
-    String pattern = r'^[^@]+@[^@]+\.[^@]+';
-    return RegExp(pattern).hasMatch(email);
+  bool _isValidEmail(String email) {
+    final regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    return regex.hasMatch(email);
+  }
+
+  Future<void> _login(BuildContext context) async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    // Validasi input
+    if (email.isEmpty || password.isEmpty) {
+      _showDialog(context, "Error", "Semua kolom harus diisi.");
+      return;
+    }
+
+    if (!_isValidEmail(email)) {
+      _showDialog(context, "Error", "Format email tidak valid.");
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:5000/api/login'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      print("Status Code: \${response.statusCode}");
+      print("Response Body: \${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Login berhasil
+        final res = jsonDecode(response.body);
+        _showDialog(context, "Sukses", res['message']).then((_) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => Mainpage()),
+          );
+        });
+      } else if (response.statusCode == 400 || response.statusCode == 422) {
+        // Kesalahan validasi
+        final res = jsonDecode(response.body);
+        _showDialog(context, "Error", res['message'] ?? "Validasi gagal.");
+      } else {
+        // Kesalahan umum
+        _showDialog(context, "Error", "Terjadi kesalahan server.");
+      }
+    } catch (e) {
+      print("Exception: \$e");
+      _showDialog(context, "Error", "Gagal terhubung ke server. Coba lagi.");
+    }
+  }
+
+  Future<void> _showDialog(BuildContext context, String title, String message) {
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -26,30 +93,21 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Bagian Header dengan Gambar
+            // Header dengan ilustrasi
             Container(
-              height: MediaQuery.of(context).size.height * 0.4,
+              color: Color(0xFF69BF5E),
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: Color(0xFF69BF5E),
-                borderRadius: BorderRadius.vertical(
-                  bottom: Radius.circular(50),
-                ),
-              ),
+              padding: const EdgeInsets.all(40.0),
               child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Image.asset(
-                    'assets/login_image.png', // Path gambar
-                    fit: BoxFit.cover,
-                  ),
+                child: Image.asset(
+                  'assets/login_image.png',
+                  height: 200,
                 ),
               ),
             ),
-
-            // Bagian Form
+            // Form Input
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+              padding: const EdgeInsets.all(30.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -66,49 +124,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     "Masuk ke Akunmu",
                     style: TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       color: Colors.black87,
                     ),
                   ),
                   SizedBox(height: 20),
-
-                  // Input Email dan Password
-                  _buildRoundedTextField("Email", _emailController),
-                  SizedBox(height: 15),
-                  _buildRoundedTextField("Password", _passwordController),
-
-                  SizedBox(height: 30),
-                  // Tombol Login
-                  _buildLoginButton(context),
-
-                  SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => ForgotPasswordScreen(),
-                          ));
-                        },
-                        child: Text(
-                          "Lupa Kata Sandi?",
-                          style: TextStyle(color: Color(0xFF69BF5E)),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => RegisterScreen(),
-                          ));
-                        },
-                        child: Text(
-                          "Belum punya akun? Daftar",
-                          style: TextStyle(color: Color(0xFF69BF5E)),
-                        ),
-                      ),
-                    ],
+                  _buildRoundedTextField(
+                    "Email",
+                    Icons.email,
+                    false,
+                    _emailController,
                   ),
+                  SizedBox(height: 20),
+                  _buildRoundedTextField(
+                    "Password",
+                    Icons.lock,
+                    true,
+                    _passwordController,
+                  ),
+                  SizedBox(height: 30),
+                  _buildLoginButton(context),
+                  SizedBox(height: 20),
+                  _buildNoAccountText(context),
                 ],
               ),
             ),
@@ -118,101 +155,69 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Widget Input
-  Widget _buildRoundedTextField(String hintText, TextEditingController controller) {
+  Widget _buildRoundedTextField(String hintText, IconData icon,
+      bool obscureText, TextEditingController controller) {
     return TextField(
       controller: controller,
+      obscureText: obscureText,
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
-        fillColor: Colors.white,
-        contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        fillColor: Colors.grey[200],
+        contentPadding:
+            EdgeInsets.symmetric(vertical: 15, horizontal: 20),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30.0),
+          borderRadius: BorderRadius.circular(10.0),
           borderSide: BorderSide.none,
         ),
+        prefixIcon: Icon(icon, color: Colors.black54),
       ),
-      obscureText: hintText == "Password" ? true : false,
     );
   }
-
 
   Widget _buildLoginButton(BuildContext context) {
     return ElevatedButton(
-      onPressed: _isLoading ? null : () => _login(context),
+      onPressed: () => _login(context),
       style: ElevatedButton.styleFrom(
         backgroundColor: Color(0xFF69BF5E),
-        padding: EdgeInsets.symmetric(vertical: 15),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(10.0),
         ),
+        padding: EdgeInsets.symmetric(vertical: 15.0),
       ),
       child: Center(
-        child: _isLoading
-            ? CircularProgressIndicator(color: Colors.white)
-            : Text(
-                "Log In",
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
+        child: Text(
+          "Login",
+          style: TextStyle(color: Colors.white, fontSize: 16.0),
+        ),
       ),
     );
   }
 
-  // Fungsi Login
-  Future<void> _login(BuildContext context) async {
-    String email = _emailController.text.trim();
-    String password = _passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      _showDialog(context, "Error", "Email dan Password harus diisi.");
-      return;
-    }
-
-    if (!isValidEmail(email)) {
-      _showDialog(context, "Error", "Format email tidak valid.");
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final result = await ApiService.login(email, password);
-
-      if (result['statusCode'] == 200 && result['data']['success'] == true) {
-        _showDialog(context, "Success", "Login berhasil!").then((_) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => Mainpage()),
-          );
-        });
-      } else {
-        _showDialog(context, "Error", result['data']['message'] ?? "Login gagal.");
-      }
-    } catch (e) {
-      _showDialog(context, "Error", "Tidak dapat terhubung ke server.");
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  // Dialog Notifikasi
-  Future<void> _showDialog(BuildContext context, String title, String message) {
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("OK"),
+  Widget _buildNoAccountText(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          "Belum punya akun? ",
+          style: TextStyle(color: Colors.black54),
+        ),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => RegisterScreen()),
+            );
+          },
+          child: Text(
+            "Daftar",
+            style: TextStyle(
+              color: Color(0xFF69BF5E),
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

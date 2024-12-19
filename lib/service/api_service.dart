@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   static Future<Map<String, dynamic>> login(String email, String password) async {
-    final url = Uri.parse('https://kulakan.cy4lsr.my.id/api');
+    final url = Uri.parse('http://192.168.121.203:5000/api/login');
     final headers = {'Content-Type': 'application/json'};
     final body = json.encode({
       'email': email,

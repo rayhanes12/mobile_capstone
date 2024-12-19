@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:projek_capstone7/models/apiresponse_model.dart';
 import 'package:projek_capstone7/service/session_service.dart';
 
-const String baseUrl = 'https://kulakan.cy4lsr.my.id/api';
+const String baseUrl = 'http://127.0.0.1:5000/api';
 
 class AuthService {
   final SessionService _sessionService = SessionService();
