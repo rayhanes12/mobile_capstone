@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class AccountPage extends StatefulWidget {
   @override
@@ -6,178 +9,104 @@ class AccountPage extends StatefulWidget {
 }
 
 class _AccountPageState extends State<AccountPage> {
-  // Kontroller untuk teks
-  TextEditingController nameController = TextEditingController();
-  TextEditingController emailController = TextEditingController();
-  TextEditingController addressController = TextEditingController();
+  String _email = "";
+  String _name = "";
+  String _address = "";
+  String _profilePhoto = "";
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Contoh nilai awal (bisa dikosongkan jika ingin user mulai dengan input manual)
-    nameController.text = '';
-    emailController.text = '';
-    addressController.text = '';
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchUserProfile() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('authToken');
+
+    if (token == null) {
+      Navigator.pushReplacementNamed(context, '/login');
+      return;
+    }
+
+    final url = Uri.parse('http://192.168.1.25:5000/api/profile');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'];
+        setState(() {
+          _email = data['email'] ?? "Tidak diketahui";
+          _name = data['name'] ?? "Tidak diketahui";
+          _address = data['address'] ?? "Alamat tidak tersedia";
+          _profilePhoto = data['profile_photo'] ?? "";
+          _isLoading = false;
+        });
+      } else if (response.statusCode == 401) {
+        Navigator.pushReplacementNamed(context, '/login');
+      } else {
+        throw Exception('Failed to load profile data');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Akun'),
-        backgroundColor: Colors.green.shade900,
-        elevation: 0,
+        title: Text("Profil Akun"),
+        backgroundColor: Color(0xFF69BF5E),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: ListView(
-          children: [
-            // Foto profil
-            Center(
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey.shade300,
-                child: Icon(
-                  Icons.person,
-                  size: 60,
-                  color: Colors.grey.shade700,
-                ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_profilePhoto.isNotEmpty)
+                    Center(
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundImage: NetworkImage(_profilePhoto),
+                      ),
+                    ),
+                  SizedBox(height: 20),
+                  Text("Nama: $_name", style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 8),
+                  Text("Email: $_email", style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 8),
+                  Text("Alamat: $_address", style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => _logout(context),
+                    style: ElevatedButton.styleFrom(primary: Colors.red),
+                    child: Text("Logout", style: TextStyle(color: Colors.white)),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: 30),
-
-            // Input untuk Nama
-            buildEditableField(
-              label: 'Nama',
-              controller: nameController,
-              hintText: 'Masukkan nama Anda',
-            ),
-
-            // Input untuk Email
-            buildEditableField(
-              label: 'Email',
-              controller: emailController,
-              hintText: 'Masukkan email Anda',
-              keyboardType: TextInputType.emailAddress,
-            ),
-
-            // Input untuk Alamat
-            buildEditableField(
-              label: 'Alamat',
-              controller: addressController,
-              hintText: 'Masukkan alamat Anda',
-            ),
-
-            // Tombol Simpan
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // Simpan data (bisa dihubungkan ke database atau API di masa depan)
-                showDialog(
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: Text('Data Disimpan'),
-                      content: Text('Informasi profil Anda telah diperbarui.'),
-                      actions: [
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: Text('OK'),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 15),
-              ),
-              child: Text(
-                'Simpan',
-                style: TextStyle(fontSize: 16, color: Color(0xFF69BF5E)),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
-
-  Widget buildEditableField({
-    required String label,
-    required TextEditingController controller,
-    String? hintText,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          SizedBox(height: 5),
-          TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              hintText: hintText,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              contentPadding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Tetap pertahankan fungsi buildMenuItem
-Widget buildMenuItem(BuildContext context, String title) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-    child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: ListTile(
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.green.shade900,
-          ),
-        ),
-        onTap: () {
-          // Aksi ketika menu diklik
-          if (title == 'Akun') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AccountPage()),
-            );
-          } else {
-            print('$title diklik');
-          }
-        },
-      ),
-    ),
-  );
 }

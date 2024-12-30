@@ -1,3 +1,4 @@
+import 'package:projek_capstone7/models/user.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionService {
@@ -20,33 +21,42 @@ class SessionService {
   }
 
   // Menyimpan data pengguna
-  Future<void> saveUser(String userId, String userName, String userEmail) async {
+  Future<void> saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userId', userId);
-    await prefs.setString('userName', userName);
-    await prefs.setString('userEmail', userEmail);
+    await prefs.setInt('id', user.id!);
+    await prefs.setString('profile_photo', user.profile_photo.toString());
+    await prefs.setString('name', user.name);
+    await prefs.setString('email', user.address);
+  
   }
 
   // Mengambil data pengguna
-  Future<Map<String, String?>> getUser() async {
+  Future<UserModel> getUser() async {
     final prefs = await SharedPreferences.getInstance();
-    String? userId = prefs.getString('userId');
-    String? userName = prefs.getString('userName');
-    String? userEmail = prefs.getString('userEmail');
+    int? id = prefs.getInt('id');
+    String? name = prefs.getString('name');
+    String? email = prefs.getString('email');
+    String? profile_photo = prefs.getString('profile_photo');
+    String? address = prefs.getString('address');
+
     
-    return {
-      'userId': userId,
-      'userName': userName,
-      'userEmail': userEmail,
-    };
+    return UserModel(
+      id: id,
+      email: email!, 
+      name: name!, 
+      address: address!, 
+      profile_photo: profile_photo);
   }
 
   // Menghapus data pengguna
   Future<void> clearUser() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('userId');
-    await prefs.remove('userName');
-    await prefs.remove('userEmail');
+    await prefs.remove('id');
+    await prefs.remove('name');
+    await prefs.remove('email');
+    await prefs.remove('profile_photo');
+    await prefs.remove('address');
+    
   }
 
   // Menghapus semua data (token dan data pengguna)

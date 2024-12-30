@@ -1,4 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:projek_capstone7/models/product.dart';
+
+import 'dart:convert';
+
+import 'package:projek_capstone7/page/mainpage/productdetailscreen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -7,6 +13,27 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  List<Product> _products = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchProducts();
+  }
+
+  // Mengambil data produk dari API
+  Future<void> fetchProducts() async {
+    final response = await http.get(Uri.parse('http://127.0.0.1:5000/api/products'));
+
+    if (response.statusCode == 200) {
+      List jsonResponse = json.decode(response.body)['products'];
+      setState(() {
+        _products = jsonResponse.map((product) => Product.fromJson(product)).toList();
+      });
+    } else {
+      throw Exception('Failed to load products');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,52 +71,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Image.asset(
-                    'assets/cart.png', 
+                    'assets/login_image.png',
                     height: 100,
                   ),
                 ],
               ),
             ),
             SizedBox(height: 10),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  // Kolom pencarian
-                  Expanded(
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: "Search",
-                        fillColor: Colors.white,
-                        filled: true,
-                        contentPadding: EdgeInsets.symmetric(
-                            vertical: 10.0, horizontal: 20.0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20.0),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  // Tombol pencarian
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Color(0xFF69BF5E),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.search, color: Colors.white),
-                      onPressed: () {
-                        // Aksi pencarian
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
 
             // Bagian Produk
             Padding(
@@ -108,18 +96,28 @@ class _HomeScreenState extends State<HomeScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: GridView.builder(
-                physics:
-                    NeverScrollableScrollPhysics(), // Disable internal scroll
-                shrinkWrap: true, // Needed to avoid infinite height error
+                physics: NeverScrollableScrollPhysics(),
+                shrinkWrap: true, 
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
                   childAspectRatio: 0.75,
                 ),
-                itemCount: 9, // Jumlah produk
+                itemCount: _products.length,
                 itemBuilder: (context, index) {
-                  return ProductPlaceholderCard();
+                  return GestureDetector(
+                    onTap: () {
+                      // Navigasi ke halaman detail produk saat produk diklik
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProductDetailScreen(product: _products[index]),
+                        ),
+                      );
+                    },
+                    child: ProductCard(product: _products[index]),
+                  );
                 },
               ),
             ),
@@ -130,14 +128,39 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// Placeholder untuk kartu produk
-class ProductPlaceholderCard extends StatelessWidget {
+class ProductCard extends StatelessWidget {
+  final Product product;
+
+  ProductCard({required this.product});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(10),
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image.network(
+            'http://192.168.1.25:5000/static/profile_photos/${product.gambar}',
+            height: 100,
+            fit: BoxFit.cover,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              product.namaBarang,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text(
+              'Rp ${product.harga}',
+              style: TextStyle(color: Colors.green, fontSize: 12),
+            ),
+          ),
+        ],
       ),
     );
   }

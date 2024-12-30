@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(MyApp());
@@ -14,7 +16,50 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class ChatPage extends StatelessWidget {
+class ChatPage extends StatefulWidget {
+  @override
+  _ChatPageState createState() => _ChatPageState();
+}
+
+class _ChatPageState extends State<ChatPage> {
+  final List<Map<String, String>> _messages = [];
+  final TextEditingController _controller = TextEditingController();
+  final String _apiUrl = 'http://127.0.0.1:5000/query'; // URL API Flask
+
+  Future<void> _sendMessage(String userMessage) async {
+    if (userMessage.isEmpty) return;
+
+    setState(() {
+      _messages.add({'sender': 'user', 'text': userMessage});
+    });
+
+    try {
+      // Kirim permintaan ke server Flask
+      final response = await http.post(
+        Uri.parse(_apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'message': userMessage}),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        setState(() {
+          _messages.add({'sender': 'bot', 'text': responseData['response']});
+        });
+      } else {
+        setState(() {
+          _messages.add({'sender': 'bot', 'text': 'Gagal mendapatkan respon.'});
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _messages.add({'sender': 'bot', 'text': 'Terjadi kesalahan jaringan.'});
+      });
+    }
+
+    _controller.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,52 +73,41 @@ class ChatPage extends StatelessWidget {
       body: Column(
         children: [
           Expanded(
-            child: ListView(
+            child: ListView.builder(
               padding: const EdgeInsets.all(16.0),
-              children: [
-                // Pesan masuk (dari pengguna)
-                Align(
-                  alignment: Alignment.centerLeft,
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                final isUser = message['sender'] == 'user';
+
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     padding: const EdgeInsets.all(12.0),
                     margin: const EdgeInsets.only(bottom: 12.0),
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: isUser ? Colors.green : Colors.grey[300],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'Halo, ada yang bisa saya bantu?',
-                      style: TextStyle(fontSize: 14),
+                      message['text']!,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isUser ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
-                ),
-                // Pesan keluar (dari bot)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Container(
-                    padding: const EdgeInsets.all(12.0),
-                    margin: const EdgeInsets.only(bottom: 12.0),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Ya, tolong bantu saya dengan informasi ini!',
-                      style: TextStyle(fontSize: 14, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
-          // Kolom input pesan
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: Row(
               children: [
-                // Input pesan
                 Expanded(
                   child: TextField(
+                    controller: _controller,
                     decoration: InputDecoration(
                       hintText: 'Tulis pesan anda...',
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -93,16 +127,13 @@ class ChatPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Tombol kirim
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    onPressed: () {
-                      // Tambahkan aksi pengiriman pesan di sini
-                    },
+                    onPressed: () => _sendMessage(_controller.text.trim()),
                     icon: Icon(Icons.send, color: Colors.white),
                   ),
                 ),

@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:projek_capstone7/models/user.dart';
 import 'package:projek_capstone7/page/auth/register.dart';
 import 'package:projek_capstone7/page/mainpage/mainpage.dart';
+import 'package:projek_capstone7/service/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -10,11 +12,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   bool _isValidEmail(String email) {
     final regex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    email = email.trim();
     return regex.hasMatch(email);
   }
 
@@ -22,52 +27,42 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    // Validasi input
-    if (email.isEmpty || password.isEmpty) {
-      _showDialog(context, "Error", "Semua kolom harus diisi.");
-      return;
-    }
-
     if (!_isValidEmail(email)) {
       _showDialog(context, "Error", "Format email tidak valid.");
       return;
     }
 
+    if (password.isEmpty || password.length < 6) {
+      _showDialog(context, "Error", "Password minimal 6 karakter.");
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      final response = await http.post(
-        Uri.parse('http://127.0.0.1:5000/api/login'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-      );
+      final response = await _authService.login(email, password);
 
-      print("Status Code: \${response.statusCode}");
-      print("Response Body: \${response.body}");
+      if (response['success'] == true) {
+      
+        // Simpan token dan user di SharedPreferences
+     
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Login berhasil
-        final res = jsonDecode(response.body);
-        _showDialog(context, "Sukses", res['message']).then((_) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => Mainpage()),
-          );
-        });
-      } else if (response.statusCode == 400 || response.statusCode == 422) {
-        // Kesalahan validasi
-        final res = jsonDecode(response.body);
-        _showDialog(context, "Error", res['message'] ?? "Validasi gagal.");
+        // Navigasi ke halaman utama
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => Mainpage()),
+        );
       } else {
-        // Kesalahan umum
-        _showDialog(context, "Error", "Terjadi kesalahan server.");
+        _showDialog(context, "Error", response['message']);
       }
     } catch (e) {
-      print("Exception: \$e");
       _showDialog(context, "Error", "Gagal terhubung ke server. Coba lagi.");
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -88,24 +83,36 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('token');
+    if (token != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Mainpage()),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Header dengan ilustrasi
             Container(
               color: Color(0xFF69BF5E),
               width: double.infinity,
               padding: const EdgeInsets.all(40.0),
               child: Center(
-                child: Image.asset(
-                  'assets/login_image.png',
-                  height: 200,
-                ),
+                child: Image.asset('assets/login_image.png', height: 200),
               ),
             ),
-            // Form Input
             Padding(
               padding: const EdgeInsets.all(30.0),
               child: Column(
@@ -121,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    "Masuk ke Akunmu",
+                    "Login untuk melanjutkan",
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -130,22 +137,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: 20),
                   _buildRoundedTextField(
-                    "Email",
-                    Icons.email,
-                    false,
-                    _emailController,
-                  ),
+                      "Email", Icons.email, false, _emailController),
                   SizedBox(height: 20),
                   _buildRoundedTextField(
-                    "Password",
-                    Icons.lock,
-                    true,
-                    _passwordController,
-                  ),
+                      "Password", Icons.lock, true, _passwordController),
                   SizedBox(height: 30),
-                  _buildLoginButton(context),
+                  _isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : _buildLoginButton(context),
                   SizedBox(height: 20),
-                  _buildNoAccountText(context),
+                  _buildCreateAccountText(context),
                 ],
               ),
             ),
@@ -155,8 +156,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildRoundedTextField(String hintText, IconData icon,
-      bool obscureText, TextEditingController controller) {
+  Widget _buildRoundedTextField(String hintText, IconData icon, bool obscureText,
+      TextEditingController controller) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
@@ -164,8 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
         hintText: hintText,
         filled: true,
         fillColor: Colors.grey[200],
-        contentPadding:
-            EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.0),
           borderSide: BorderSide.none,
@@ -194,7 +194,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildNoAccountText(BuildContext context) {
+  Widget _buildCreateAccountText(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

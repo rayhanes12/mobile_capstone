@@ -35,12 +35,15 @@ dependencies:
   http: ^1.2.2
   image_picker: ^1.1.2
   intl: ^0.20.1
-  shared_preferences: ^2.3.3
+  mockito: ^5.4.4
+  shared_preferences: ^2.3.4
   url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
 # For information on the generic Dart part of this file, see the

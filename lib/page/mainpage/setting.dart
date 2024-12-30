@@ -14,17 +14,15 @@ class SettingsPage extends StatelessWidget {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Header
           Text(
             'Pengaturan',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.green.shade900,
+              color: Color(0xFF69BF5E),
             ),
           ),
           SizedBox(height: 30),
-          // List Menu
           buildMenuItem(context, 'Akun'),
           buildMenuItem(context, 'Riwayat'),
           buildMenuItem(context, 'Tentang Kami'),
@@ -34,7 +32,6 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  // Fungsi untuk membangun item menu
   Widget buildMenuItem(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -55,18 +52,16 @@ class SettingsPage extends StatelessWidget {
             title,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.green.shade900,
+              color: Color(0xFF69BF5E),
             ),
           ),
           onTap: () {
-            // Aksi ketika menu diklik
             if (title == 'Akun') {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => AccountPage()),
               );
             } else if (title == 'Logout') {
-              // Aksi logout
               _logout(context);
             } else {
               print('$title diklik');
@@ -77,9 +72,7 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  // Fungsi untuk melakukan logout
   void _logout(BuildContext context) {
-    // Menampilkan dialog konfirmasi logout
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -89,13 +82,12 @@ class SettingsPage extends StatelessWidget {
           actions: <Widget>[
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Menutup dialog
+                Navigator.pop(context); 
               },
               child: Text('Batal'),
             ),
             TextButton(
               onPressed: () {
-                // Navigasi ke halaman login (sesuaikan dengan halaman login Anda)
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => LoginScreen()),

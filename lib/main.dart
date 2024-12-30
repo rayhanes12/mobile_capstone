@@ -1,6 +1,8 @@
 import 'package:projek_capstone7/page/auth/login.dart';
 import 'package:flutter/material.dart';
 import 'package:projek_capstone7/page/auth/register.dart';
+import 'package:projek_capstone7/page/mainpage/chatbot.dart';
+import 'package:projek_capstone7/page/mainpage/home.dart';
 import 'package:projek_capstone7/page/mainpage/mainpage.dart';
 
 void main() {
